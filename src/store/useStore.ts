@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import type { Transaction, Category, Asset, Liability, Investment } from '../types';
+import type { Transaction, Category, Asset, Liability, Investment, Account } from '../types';
 
 const STORAGE_KEYS = {
   transactions: 'fs_transactions',
@@ -8,6 +8,7 @@ const STORAGE_KEYS = {
   assets: 'fs_assets',
   liabilities: 'fs_liabilities',
   investments: 'fs_investments',
+  accounts: 'fs_accounts',
 };
 
 const DEFAULT_CATEGORIES: Category[] = [
@@ -60,12 +61,16 @@ export function useStore() {
   const [investments, setInvestments] = useState<Investment[]>(() =>
     loadFromStorage(STORAGE_KEYS.investments, [])
   );
+  const [accounts, setAccounts] = useState<Account[]>(() =>
+    loadFromStorage(STORAGE_KEYS.accounts, [])
+  );
 
   useEffect(() => saveToStorage(STORAGE_KEYS.transactions, transactions), [transactions]);
   useEffect(() => saveToStorage(STORAGE_KEYS.categories, categories), [categories]);
   useEffect(() => saveToStorage(STORAGE_KEYS.assets, assets), [assets]);
   useEffect(() => saveToStorage(STORAGE_KEYS.liabilities, liabilities), [liabilities]);
   useEffect(() => saveToStorage(STORAGE_KEYS.investments, investments), [investments]);
+  useEffect(() => saveToStorage(STORAGE_KEYS.accounts, accounts), [accounts]);
 
   const addTransaction = useCallback((tx: Omit<Transaction, 'id' | 'createdAt'>) => {
     setTransactions(prev => [
@@ -139,6 +144,23 @@ export function useStore() {
     setInvestments(prev => prev.filter(i => i.id !== id));
   }, []);
 
+  const addAccount = useCallback((acc: Omit<Account, 'id' | 'createdAt'>) => {
+    setAccounts(prev => [
+      ...prev,
+      { ...acc, id: uuidv4(), createdAt: new Date().toISOString() },
+    ]);
+  }, []);
+
+  const updateAccount = useCallback((id: string, updates: Partial<Account>) => {
+    setAccounts(prev =>
+      prev.map(a => (a.id === id ? { ...a, ...updates } : a))
+    );
+  }, []);
+
+  const deleteAccount = useCallback((id: string) => {
+    setAccounts(prev => prev.filter(a => a.id !== id));
+  }, []);
+
   return {
     transactions,
     categories,
@@ -158,5 +180,9 @@ export function useStore() {
     addInvestment,
     updateInvestment,
     deleteInvestment,
+    accounts,
+    addAccount,
+    updateAccount,
+    deleteAccount,
   };
 }

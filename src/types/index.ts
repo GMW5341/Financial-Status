@@ -7,13 +7,18 @@ export interface Category {
   icon: string;
 }
 
+export type CostType = 'fixed' | 'variable';
+
 export interface Transaction {
   id: string;
   date: string; // YYYY-MM-DD
   type: TransactionType;
+  costType?: CostType; // only for expense
   categoryId: string;
+  name: string;
   amount: number;
   description: string;
+  accountId?: string;
   createdAt: string;
 }
 
@@ -43,6 +48,13 @@ export interface Investment {
   currentPrice: number;
   note: string;
   updatedAt: string;
+}
+
+export interface Account {
+  id: string;
+  name: string;
+  icon: string;
+  createdAt: string;
 }
 
 export interface MonthlyData {
