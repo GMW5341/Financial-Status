@@ -187,8 +187,11 @@ body {
 .transaction-amount { font-weight: 700; font-size: 14px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
 .transaction-amount.income { color: var(--primary); }
 .transaction-amount.expense { color: var(--danger); }
+.transaction-edit { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; font-size: 13px; opacity: 0.4; transition: all 0.15s; }
+.transaction-edit:hover { opacity: 1; color: var(--primary); }
 .transaction-delete { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; font-size: 14px; opacity: 0.4; transition: all 0.15s; }
 .transaction-delete:hover { opacity: 1; color: var(--danger); }
+.tx-edit-row td { background: rgba(27, 42, 74, 0.02); }
 
 /* ===== Date Group ===== */
 .date-group { margin-bottom: 4px; }

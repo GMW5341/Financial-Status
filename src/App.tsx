@@ -43,6 +43,7 @@ function App() {
                 transactions={store.transactions}
                 categories={store.categories}
                 accounts={store.accounts}
+                onUpdate={store.updateTransaction}
                 onDelete={store.deleteTransaction}
               />
             }
