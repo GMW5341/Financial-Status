@@ -1,5 +1,5 @@
 import { format, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths } from 'date-fns';
-import type { Transaction, Category, Asset, Liability } from '../types';
+import type { Transaction, Category, Asset, Liability, Investment } from '../types';
 
 export function getTransactionsForMonth(transactions: Transaction[], yearMonth: string): Transaction[] {
   return transactions.filter(t => t.date.startsWith(yearMonth));
@@ -36,7 +36,7 @@ export function calculateByCategory(
       return {
         categoryId,
         categoryName: cat?.name || '알 수 없음',
-        icon: cat?.icon || '❓',
+        icon: cat?.icon || '?',
         type: cat?.type || 'expense',
         total,
       };
@@ -68,6 +68,40 @@ export function getMonthlyTrend(
   });
 }
 
+export function getRetainedEarningsTrend(
+  transactions: Transaction[],
+  monthsBack: number = 12
+): { month: string; label: string; retained: number; cumulative: number; savingsRate: number }[] {
+  const now = new Date();
+  const start = startOfMonth(subMonths(now, monthsBack - 1));
+  const end = endOfMonth(now);
+  const months = eachMonthOfInterval({ start, end });
+
+  const startStr = format(start, 'yyyy-MM');
+  const priorTx = transactions.filter(t => t.date < startStr + '-01');
+  let cumulative = priorTx.reduce((sum, t) => sum + (t.type === 'income' ? t.amount : -t.amount), 0);
+
+  return months.map(m => {
+    const yearMonth = format(m, 'yyyy-MM');
+    const monthTx = getTransactionsForMonth(transactions, yearMonth);
+    const income = calculateTotalByType(monthTx, 'income');
+    const expense = calculateTotalByType(monthTx, 'expense');
+    const retained = income - expense;
+    cumulative += retained;
+    return {
+      month: yearMonth,
+      label: format(m, 'M월'),
+      retained,
+      cumulative,
+      savingsRate: income > 0 ? (retained / income) * 100 : 0,
+    };
+  });
+}
+
+export function getTotalRetainedEarnings(transactions: Transaction[]): number {
+  return transactions.reduce((sum, t) => sum + (t.type === 'income' ? t.amount : -t.amount), 0);
+}
+
 export function getCategoryTrend(
   transactions: Transaction[],
   categoryId: string,
@@ -87,7 +121,6 @@ export function getCategoryTrend(
   });
 }
 
-// 손익계산서 데이터
 export function getIncomeStatement(
   transactions: Transaction[],
   categories: Category[],
@@ -114,21 +147,10 @@ export function getIncomeStatement(
   };
 }
 
-// 재무상태표 데이터
 export function getBalanceSheet(assets: Asset[], liabilities: Liability[]) {
   const totalAssets = assets.reduce((sum, a) => sum + a.amount, 0);
   const totalLiabilities = liabilities.reduce((sum, l) => sum + l.amount, 0);
   const netWorth = totalAssets - totalLiabilities;
-
-  const assetsByType = assets.reduce((acc, a) => {
-    acc[a.type] = (acc[a.type] || 0) + a.amount;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const liabilitiesByType = liabilities.reduce((acc, l) => {
-    acc[l.type] = (acc[l.type] || 0) + l.amount;
-    return acc;
-  }, {} as Record<string, number>);
 
   return {
     totalAssets,
@@ -136,9 +158,29 @@ export function getBalanceSheet(assets: Asset[], liabilities: Liability[]) {
     netWorth,
     assets,
     liabilities,
-    assetsByType,
-    liabilitiesByType,
     debtRatio: totalAssets > 0 ? (totalLiabilities / totalAssets) * 100 : 0,
+  };
+}
+
+export function getInvestmentSummary(investments: Investment[]) {
+  const totalInvested = investments.reduce((sum, i) => sum + i.quantity * i.avgPrice, 0);
+  const totalCurrent = investments.reduce((sum, i) => sum + i.quantity * i.currentPrice, 0);
+  const totalPnL = totalCurrent - totalInvested;
+  const returnRate = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
+
+  const byType = investments.reduce((acc, inv) => {
+    const value = inv.quantity * inv.currentPrice;
+    acc[inv.type] = (acc[inv.type] || 0) + value;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return {
+    totalInvested,
+    totalCurrent,
+    totalPnL,
+    returnRate,
+    byType,
+    count: investments.length,
   };
 }
 

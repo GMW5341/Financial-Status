@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import type { Transaction, Category } from '../types';
-import { getIncomeStatement, formatKRW } from '../utils/finance';
+import { getIncomeStatement, getTotalRetainedEarnings, formatKRW } from '../utils/finance';
 import MonthSelector from '../components/MonthSelector';
 
 interface Props {
@@ -13,24 +13,34 @@ export default function IncomeStatement({ transactions, categories }: Props) {
   const [yearMonth, setYearMonth] = useState(format(new Date(), 'yyyy-MM'));
 
   const stmt = getIncomeStatement(transactions, categories, yearMonth);
+  const totalRetained = getTotalRetainedEarnings(transactions);
 
   return (
     <div>
       <div className="page-header">
         <h1>손익계산서</h1>
-        <p>나라는 기업의 월간 손익을 확인하세요</p>
+        <p>수입 대비 비용 통제 현황을 점검하세요</p>
       </div>
 
       <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
 
-      <div className="card">
-        <div className="metric-card">
-          <div>
-            <div className="metric-label">영업이익률</div>
-            <div className="metric-value" style={{ color: stmt.operatingMargin >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-              {stmt.operatingMargin.toFixed(1)}%
-            </div>
+      <div className="summary-grid">
+        <div className="summary-item">
+          <div className="label">영업이익률 (절약률)</div>
+          <div className="value" style={{ color: stmt.operatingMargin >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+            {stmt.operatingMargin.toFixed(1)}%
           </div>
+          <div className="sub-value">목표: 30% 이상</div>
+        </div>
+        <div className="summary-item">
+          <div className="label">당기순이익</div>
+          <div className={`value ${stmt.netIncome >= 0 ? 'net' : 'negative'}`}>
+            {stmt.netIncome >= 0 ? '+' : ''}{formatKRW(stmt.netIncome)}
+          </div>
+        </div>
+        <div className="summary-item">
+          <div className="label">누적 이익잉여금</div>
+          <div className="value accent">{formatKRW(totalRetained)}</div>
         </div>
       </div>
 
@@ -43,7 +53,6 @@ export default function IncomeStatement({ transactions, categories }: Props) {
             </tr>
           </thead>
           <tbody>
-            {/* 매출 (수입) */}
             <tr className="subtotal-row">
               <td>I. 매출 (수입)</td>
               <td className="amount-col">{formatKRW(stmt.totalIncome)}</td>
@@ -62,7 +71,6 @@ export default function IncomeStatement({ transactions, categories }: Props) {
               </tr>
             )}
 
-            {/* 매출원가 (지출) */}
             <tr className="subtotal-row">
               <td>II. 비용 (지출)</td>
               <td className="amount-col" style={{ color: 'var(--danger)' }}>
@@ -83,9 +91,8 @@ export default function IncomeStatement({ transactions, categories }: Props) {
               </tr>
             )}
 
-            {/* 순이익 */}
             <tr className="total-row">
-              <td>당기순이익</td>
+              <td>당기순이익 (이익잉여금 반영)</td>
               <td
                 className="amount-col"
                 style={{ color: stmt.netIncome >= 0 ? 'var(--success)' : 'var(--danger)' }}

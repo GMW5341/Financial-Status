@@ -1,23 +1,54 @@
 import { useState } from 'react';
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  LineChart, Line, AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell,
 } from 'recharts';
 import type { Transaction, Category } from '../types';
-import { getMonthlyTrend, getCategoryTrend, formatKRW, formatCompact } from '../utils/finance';
+import { getMonthlyTrend, getRetainedEarningsTrend, getCategoryTrend, formatKRW } from '../utils/finance';
 
 interface Props {
   transactions: Transaction[];
   categories: Category[];
 }
 
-const COLORS = ['#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+const COLORS = ['#1B2A4A', '#EF4444', '#C9A84C', '#10B981', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+
+function ChartTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="chart-tooltip">
+      <div className="chart-tooltip-label">{label}</div>
+      {payload.map((p: any, i: number) => (
+        <div key={i} className="chart-tooltip-item">
+          <span className="chart-tooltip-dot" style={{ background: p.color || p.stroke || p.fill }} />
+          <span className="chart-tooltip-name">{p.name}</span>
+          <span className="chart-tooltip-value">{formatKRW(Number(p.value))}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PieTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0];
+  return (
+    <div className="chart-tooltip">
+      <div className="chart-tooltip-item">
+        <span className="chart-tooltip-dot" style={{ background: d.payload?.fill }} />
+        <span className="chart-tooltip-name">{d.name}</span>
+        <span className="chart-tooltip-value">{formatKRW(Number(d.value))}</span>
+      </div>
+    </div>
+  );
+}
 
 export default function Trends({ transactions, categories }: Props) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [months, setMonths] = useState(6);
 
   const trend = getMonthlyTrend(transactions, months);
+  const retainedTrend = getRetainedEarningsTrend(transactions, months);
 
   const expenseCategories = categories.filter(c => c.type === 'expense');
   const incomeCategories = categories.filter(c => c.type === 'income');
@@ -26,7 +57,6 @@ export default function Trends({ transactions, categories }: Props) {
     ? getCategoryTrend(transactions, selectedCategory, months)
     : null;
 
-  // Pie chart data for expense breakdown (all time in selected range)
   const expensePieData = expenseCategories
     .map(cat => {
       const total = transactions
@@ -41,16 +71,17 @@ export default function Trends({ transactions, categories }: Props) {
     <div>
       <div className="page-header">
         <h1>추이 분석</h1>
-        <p>수입과 지출의 트렌드를 확인하세요</p>
+        <p>수입 대비 비용 통제 현황을 확인하세요</p>
       </div>
 
+      {/* Income vs Expense */}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div className="card-title" style={{ marginBottom: 0 }}>수입 vs 지출</div>
           <select
             value={months}
             onChange={e => setMonths(Number(e.target.value))}
-            style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 13 }}
+            style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 13, fontFamily: 'inherit' }}
           >
             <option value={3}>3개월</option>
             <option value={6}>6개월</option>
@@ -59,17 +90,58 @@ export default function Trends({ transactions, categories }: Props) {
         </div>
         <ResponsiveContainer width="100%" height={240}>
           <LineChart data={trend}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis dataKey="label" fontSize={12} />
-            <YAxis fontSize={12} tickFormatter={formatCompact} />
-            <Tooltip formatter={(value) => formatKRW(Number(value))} />
-            <Line type="monotone" dataKey="income" name="수입" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} />
-            <Line type="monotone" dataKey="expense" name="지출" stroke="#ef4444" strokeWidth={2} dot={{ r: 4 }} />
-            <Line type="monotone" dataKey="net" name="순이익" stroke="#16a34a" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+            <XAxis dataKey="label" fontSize={12} tickLine={false} axisLine={false} />
+            <Tooltip content={<ChartTooltip />} />
+            <Line type="monotone" dataKey="income" name="수입" stroke="#2D4A7A" strokeWidth={2} dot={{ r: 3, fill: '#2D4A7A' }} />
+            <Line type="monotone" dataKey="expense" name="지출" stroke="#EF4444" strokeWidth={2} dot={{ r: 3, fill: '#EF4444' }} />
+            <Line type="monotone" dataKey="net" name="순이익" stroke="#10B981" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 2, fill: '#10B981' }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
+      {/* Savings Rate Trend */}
+      <div className="card">
+        <div className="card-title">절약률 추이</div>
+        <ResponsiveContainer width="100%" height={200}>
+          <AreaChart data={retainedTrend}>
+            <defs>
+              <linearGradient id="savingsGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#C9A84C" stopOpacity={0.15} />
+                <stop offset="95%" stopColor="#C9A84C" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+            <XAxis dataKey="label" fontSize={12} tickLine={false} axisLine={false} />
+            <Tooltip
+              content={({ active, payload, label }: any) => {
+                if (!active || !payload?.length) return null;
+                return (
+                  <div className="chart-tooltip">
+                    <div className="chart-tooltip-label">{label}</div>
+                    <div className="chart-tooltip-item">
+                      <span className="chart-tooltip-dot" style={{ background: '#C9A84C' }} />
+                      <span className="chart-tooltip-name">절약률</span>
+                      <span className="chart-tooltip-value">{Number(payload[0].value).toFixed(1)}%</span>
+                    </div>
+                  </div>
+                );
+              }}
+            />
+            <Area
+              type="monotone"
+              dataKey="savingsRate"
+              name="절약률"
+              stroke="#C9A84C"
+              strokeWidth={2}
+              fill="url(#savingsGrad)"
+              dot={{ r: 3, fill: '#C9A84C' }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Expense Pie */}
       {expensePieData.length > 0 && (
         <div className="card">
           <div className="card-title">지출 비율</div>
@@ -89,12 +161,13 @@ export default function Trends({ transactions, categories }: Props) {
                   <Cell key={i} fill={COLORS[i % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value) => formatKRW(Number(value))} />
+              <Tooltip content={<PieTooltip />} />
             </PieChart>
           </ResponsiveContainer>
         </div>
       )}
 
+      {/* Category Trend */}
       <div className="card">
         <div className="card-title">카테고리별 추이</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
@@ -106,10 +179,11 @@ export default function Trends({ transactions, categories }: Props) {
                 padding: '4px 10px',
                 borderRadius: 16,
                 border: selectedCategory === cat.id ? '2px solid var(--primary)' : '1px solid var(--border)',
-                background: selectedCategory === cat.id ? 'rgba(37,99,235,0.05)' : 'white',
+                background: selectedCategory === cat.id ? 'rgba(27,42,74,0.04)' : 'white',
                 cursor: 'pointer',
                 fontSize: 12,
                 color: selectedCategory === cat.id ? 'var(--primary)' : 'var(--text-secondary)',
+                fontFamily: 'inherit',
               }}
             >
               {cat.icon} {cat.name}
@@ -120,11 +194,10 @@ export default function Trends({ transactions, categories }: Props) {
         {categoryTrend ? (
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={categoryTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="label" fontSize={12} />
-              <YAxis fontSize={12} tickFormatter={formatCompact} />
-              <Tooltip formatter={(value) => formatKRW(Number(value))} />
-              <Line type="monotone" dataKey="amount" name="금액" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 4 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+              <XAxis dataKey="label" fontSize={12} tickLine={false} axisLine={false} />
+              <Tooltip content={<ChartTooltip />} />
+              <Line type="monotone" dataKey="amount" name="금액" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3, fill: '#8b5cf6' }} />
             </LineChart>
           </ResponsiveContainer>
         ) : (

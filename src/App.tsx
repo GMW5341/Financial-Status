@@ -4,7 +4,7 @@ import Dashboard from './pages/Dashboard';
 import AddTransaction from './pages/AddTransaction';
 import Trends from './pages/Trends';
 import IncomeStatement from './pages/IncomeStatement';
-import BalanceSheet from './pages/BalanceSheet';
+import InvestmentPortfolio from './pages/InvestmentPortfolio';
 import { useStore } from './store/useStore';
 
 function App() {
@@ -52,15 +52,13 @@ function App() {
             }
           />
           <Route
-            path="/balance-sheet"
+            path="/investments"
             element={
-              <BalanceSheet
-                assets={store.assets}
-                liabilities={store.liabilities}
-                onAddAsset={store.addAsset}
-                onDeleteAsset={store.deleteAsset}
-                onAddLiability={store.addLiability}
-                onDeleteLiability={store.deleteLiability}
+              <InvestmentPortfolio
+                investments={store.investments}
+                onAdd={store.addInvestment}
+                onUpdate={store.updateInvestment}
+                onDelete={store.deleteInvestment}
               />
             }
           />

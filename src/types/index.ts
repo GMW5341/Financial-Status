@@ -33,6 +33,18 @@ export interface Liability {
   updatedAt: string;
 }
 
+export interface Investment {
+  id: string;
+  name: string;
+  ticker: string;
+  type: 'domestic_stock' | 'foreign_stock' | 'etf' | 'bond' | 'fund' | 'crypto' | 'savings' | 'other';
+  quantity: number;
+  avgPrice: number;
+  currentPrice: number;
+  note: string;
+  updatedAt: string;
+}
+
 export interface MonthlyData {
   month: string; // YYYY-MM
   totalIncome: number;
