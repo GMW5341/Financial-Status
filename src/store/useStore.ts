@@ -93,6 +93,16 @@ export function useStore() {
     setCategories(prev => [...prev, { ...cat, id: uuidv4() }]);
   }, []);
 
+  const updateCategory = useCallback((id: string, updates: Partial<Category>) => {
+    setCategories(prev =>
+      prev.map(c => (c.id === id ? { ...c, ...updates } : c))
+    );
+  }, []);
+
+  const deleteCategory = useCallback((id: string) => {
+    setCategories(prev => prev.filter(c => c.id !== id));
+  }, []);
+
   const addAsset = useCallback((asset: Omit<Asset, 'id' | 'updatedAt'>) => {
     setAssets(prev => [
       ...prev,
@@ -171,6 +181,8 @@ export function useStore() {
     deleteTransaction,
     updateTransaction,
     addCategory,
+    updateCategory,
+    deleteCategory,
     addAsset,
     updateAsset,
     deleteAsset,

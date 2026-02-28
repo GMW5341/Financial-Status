@@ -45,6 +45,7 @@ function App() {
                 accounts={store.accounts}
                 onUpdate={store.updateTransaction}
                 onDelete={store.deleteTransaction}
+                onAddCategory={store.addCategory}
               />
             }
           />
@@ -85,6 +86,10 @@ function App() {
                 onAddAccount={store.addAccount}
                 onUpdateAccount={store.updateAccount}
                 onDeleteAccount={store.deleteAccount}
+                categories={store.categories}
+                onAddCategory={store.addCategory}
+                onUpdateCategory={store.updateCategory}
+                onDeleteCategory={store.deleteCategory}
               />
             }
           />

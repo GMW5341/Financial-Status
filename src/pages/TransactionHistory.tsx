@@ -8,6 +8,7 @@ interface Props {
   accounts: Account[];
   onUpdate: (id: string, updates: Partial<Transaction>) => void;
   onDelete: (id: string) => void;
+  onAddCategory: (cat: Omit<Category, 'id'>) => void;
 }
 
 function downloadCSV(transactions: Transaction[], categories: Category[], accounts: Account[]) {
@@ -48,7 +49,7 @@ interface EditState {
   description: string;
 }
 
-export default function TransactionHistory({ transactions, categories, accounts, onUpdate, onDelete }: Props) {
+export default function TransactionHistory({ transactions, categories, accounts, onUpdate, onDelete, onAddCategory }: Props) {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [costTypeFilter, setCostTypeFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -91,6 +92,16 @@ export default function TransactionHistory({ transactions, categories, accounts,
       description: edit.description,
     });
     setEditingId(null);
+  };
+
+  const [newCatName, setNewCatName] = useState('');
+  const [showNewCat, setShowNewCat] = useState(false);
+
+  const handleAddQuickCategory = () => {
+    if (!newCatName.trim()) return;
+    onAddCategory({ name: newCatName.trim(), type: edit.type, icon: edit.type === 'income' ? '💰' : '📎' });
+    setNewCatName('');
+    setShowNewCat(false);
   };
 
   const editCategories = categories.filter(c => c.type === edit.type);
@@ -248,12 +259,27 @@ export default function TransactionHistory({ transactions, categories, accounts,
                           ) : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>-</span>}
                         </td>
                         <td>
-                          <select value={edit.categoryId} onChange={e => setEdit({ ...edit, categoryId: e.target.value })} style={inputStyle}>
+                          <select value={edit.categoryId} onChange={e => {
+                            if (e.target.value === '__new__') { setShowNewCat(true); }
+                            else { setEdit({ ...edit, categoryId: e.target.value }); }
+                          }} style={inputStyle}>
                             <option value="">선택</option>
                             {editCategories.map(cat => (
                               <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
                             ))}
+                            <option value="__new__">+ 새 카테고리</option>
                           </select>
+                          {showNewCat && (
+                            <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                              <input type="text" value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder="이름"
+                                style={{ ...inputStyle, flex: 1, minWidth: 60 }} autoFocus
+                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddQuickCategory(); } }} />
+                              <button type="button" onClick={handleAddQuickCategory} disabled={!newCatName.trim()}
+                                style={{ padding: '3px 6px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 5, fontSize: 10, cursor: 'pointer', fontFamily: 'inherit', opacity: !newCatName.trim() ? 0.4 : 1, whiteSpace: 'nowrap' }}>추가</button>
+                              <button type="button" onClick={() => { setShowNewCat(false); setNewCatName(''); }}
+                                style={{ padding: '3px 6px', background: 'var(--bg)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 5, fontSize: 10, cursor: 'pointer', fontFamily: 'inherit' }}>취소</button>
+                            </div>
+                          )}
                         </td>
                         {accounts.length > 0 && (
                           <td>

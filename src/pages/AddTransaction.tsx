@@ -106,69 +106,73 @@ export default function AddTransaction({ categories, accounts, onAdd }: Props) {
             </button>
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label>이름</label>
-              <input type="text" placeholder="거래 이름 (예: 점심식사)" value={name} onChange={e => setName(e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label>날짜</label>
-              <input type="date" value={date} onChange={e => setDate(e.target.value)} />
-            </div>
-          </div>
+          <div className="add-tx-columns">
+            {/* Left column */}
+            <div className="add-tx-col">
+              <div className="form-group">
+                <label>이름</label>
+                <input type="text" placeholder="거래 이름 (예: 점심식사)" value={name} onChange={e => setName(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label>날짜</label>
+                <input type="date" value={date} onChange={e => setDate(e.target.value)} />
+              </div>
 
-          {type === 'expense' && (
-            <div className="form-group">
-              <label>비용 구분</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" onClick={() => setCostType('fixed')}
-                  style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: costType === 'fixed' ? '2px solid #8b5cf6' : '1px solid var(--border)', background: costType === 'fixed' ? 'rgba(139,92,246,0.06)' : 'var(--bg-card)', color: costType === 'fixed' ? '#8b5cf6' : 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  고정비
-                </button>
-                <button type="button" onClick={() => setCostType('variable')}
-                  style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: costType === 'variable' ? '2px solid #f59e0b' : '1px solid var(--border)', background: costType === 'variable' ? 'rgba(245,158,11,0.06)' : 'var(--bg-card)', color: costType === 'variable' ? '#f59e0b' : 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  변동비
-                </button>
+              {type === 'expense' && (
+                <div className="form-group">
+                  <label>비용 구분</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="button" onClick={() => setCostType('fixed')}
+                      style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: costType === 'fixed' ? '2px solid #8b5cf6' : '1px solid var(--border)', background: costType === 'fixed' ? 'rgba(139,92,246,0.06)' : 'var(--bg-card)', color: costType === 'fixed' ? '#8b5cf6' : 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      고정비
+                    </button>
+                    <button type="button" onClick={() => setCostType('variable')}
+                      style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: costType === 'variable' ? '2px solid #f59e0b' : '1px solid var(--border)', background: costType === 'variable' ? 'rgba(245,158,11,0.06)' : 'var(--bg-card)', color: costType === 'variable' ? '#f59e0b' : 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      변동비
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {accounts.length > 0 && (
+                <div className="form-group">
+                  <label>계좌</label>
+                  <select value={accountId} onChange={e => setAccountId(e.target.value)} style={{ fontFamily: 'inherit' }}>
+                    <option value="">선택 안 함</option>
+                    {accounts.map(acc => (
+                      <option key={acc.id} value={acc.id}>{acc.icon} {acc.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="form-group">
+                <label>금액 (원)</label>
+                <input type="number" placeholder="0" value={amount} onChange={e => setAmount(e.target.value)} min="0" />
+              </div>
+              <div className="form-group">
+                <label>메모 (선택)</label>
+                <input type="text" placeholder="어디서, 무엇을" value={description} onChange={e => setDescription(e.target.value)} />
               </div>
             </div>
-          )}
 
-          {accounts.length > 0 && (
-            <div className="form-group">
-              <label>계좌</label>
-              <select value={accountId} onChange={e => setAccountId(e.target.value)} style={{ fontFamily: 'inherit' }}>
-                <option value="">선택 안 함</option>
-                {accounts.map(acc => (
-                  <option key={acc.id} value={acc.id}>{acc.icon} {acc.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div className="form-group">
-            <label>카테고리</label>
-            <div className="category-grid">
-              {filteredCategories.map(cat => (
-                <div key={cat.id} className={`category-chip ${categoryId === cat.id ? 'selected' : ''}`} onClick={() => setCategoryId(cat.id)}>
-                  <span className="icon">{cat.icon}</span>
-                  <span>{cat.name}</span>
+            {/* Right column */}
+            <div className="add-tx-col">
+              <div className="form-group">
+                <label>카테고리</label>
+                <div className="category-grid">
+                  {filteredCategories.map(cat => (
+                    <div key={cat.id} className={`category-chip ${categoryId === cat.id ? 'selected' : ''}`} onClick={() => setCategoryId(cat.id)}>
+                      <span className="icon">{cat.icon}</span>
+                      <span>{cat.name}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label>금액 (원)</label>
-              <input type="number" placeholder="0" value={amount} onChange={e => setAmount(e.target.value)} min="0" />
-            </div>
-            <div className="form-group">
-              <label>메모 (선택)</label>
-              <input type="text" placeholder="어디서, 무엇을" value={description} onChange={e => setDescription(e.target.value)} />
-            </div>
-          </div>
-
-          <button type="submit" className="btn btn-primary" disabled={!categoryId || !amount || !name}>
+          <button type="submit" className="btn btn-primary" disabled={!categoryId || !amount || !name} style={{ marginTop: 8 }}>
             저장하기
           </button>
         </div>
