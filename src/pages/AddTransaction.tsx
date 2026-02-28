@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import type { TransactionType, CostType, Category, Account } from '../types';
@@ -9,16 +9,57 @@ interface Props {
   onAdd: (tx: { date: string; type: TransactionType; costType?: CostType; categoryId: string; name: string; amount: number; description: string; accountId?: string }) => void;
 }
 
+const DRAFT_KEY = 'add-transaction-draft';
+
+interface Draft {
+  type: TransactionType;
+  costType: CostType | '';
+  date: string;
+  categoryId: string;
+  name: string;
+  amount: string;
+  description: string;
+  accountId: string;
+}
+
+function loadDraft(): Draft | null {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(draft: Draft) {
+  sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+}
+
+function clearDraft() {
+  sessionStorage.removeItem(DRAFT_KEY);
+}
+
 export default function AddTransaction({ categories, accounts, onAdd }: Props) {
   const navigate = useNavigate();
-  const [type, setType] = useState<TransactionType>('expense');
-  const [costType, setCostType] = useState<CostType | ''>('');
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [categoryId, setCategoryId] = useState('');
-  const [name, setName] = useState('');
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [accountId, setAccountId] = useState('');
+  const saved = loadDraft();
+
+  const [type, setType] = useState<TransactionType>(saved?.type ?? 'expense');
+  const [costType, setCostType] = useState<CostType | ''>(saved?.costType ?? '');
+  const [date, setDate] = useState(saved?.date ?? format(new Date(), 'yyyy-MM-dd'));
+  const [categoryId, setCategoryId] = useState(saved?.categoryId ?? '');
+  const [name, setName] = useState(saved?.name ?? '');
+  const [amount, setAmount] = useState(saved?.amount ?? '');
+  const [description, setDescription] = useState(saved?.description ?? '');
+  const [accountId, setAccountId] = useState(saved?.accountId ?? '');
+
+  const persistDraft = useCallback(() => {
+    saveDraft({ type, costType, date, categoryId, name, amount, description, accountId });
+  }, [type, costType, date, categoryId, name, amount, description, accountId]);
+
+  useEffect(() => {
+    persistDraft();
+  }, [persistDraft]);
 
   const filteredCategories = categories.filter(c => c.type === type);
 
@@ -43,6 +84,7 @@ export default function AddTransaction({ categories, accounts, onAdd }: Props) {
     setCategoryId('');
     setCostType('');
     setAccountId('');
+    clearDraft();
     navigate('/');
   };
 
