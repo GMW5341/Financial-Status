@@ -10,6 +10,8 @@ interface Props {
   onAddCategory: (cat: Omit<Category, 'id'>) => void;
   onUpdateCategory: (id: string, updates: Partial<Category>) => void;
   onDeleteCategory: (id: string) => void;
+  apiKey: string;
+  onSetApiKey: (key: string) => void;
 }
 
 const ACCOUNT_ICONS = ['🏦', '💳', '📱', '💰', '🏧', '🪙', '💵', '🏢'];
@@ -18,6 +20,7 @@ const CATEGORY_ICONS = ['💰', '💻', '📈', '💵', '📦', '🍚', '🚗', 
 export default function Settings({
   accounts, onAddAccount, onUpdateAccount, onDeleteAccount,
   categories, onAddCategory, onUpdateCategory, onDeleteCategory,
+  apiKey, onSetApiKey,
 }: Props) {
   // Account state
   const [accName, setAccName] = useState('');
@@ -35,6 +38,10 @@ export default function Settings({
   const [editCatIcon, setEditCatIcon] = useState('');
   const [editCatType, setEditCatType] = useState<TransactionType>('expense');
   const [catTabFilter, setCatTabFilter] = useState<'all' | TransactionType>('all');
+
+  // API key state
+  const [keyInput, setKeyInput] = useState(apiKey);
+  const [showKey, setShowKey] = useState(false);
 
   const handleAddAccount = (e: React.FormEvent) => {
     e.preventDefault();
@@ -202,6 +209,48 @@ export default function Settings({
             </div>
           )}
         </div>
+      </div>
+
+      {/* API Key Section */}
+      <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>AI 분석 설정</h2>
+      <div className="card" style={{ marginBottom: 32 }}>
+        <div className="card-title">Anthropic API Key</div>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
+          AI 재무 분석 기능을 사용하려면 Anthropic API 키를 입력하세요. 키는 브라우저 로컬 스토리지에만 저장됩니다.
+        </p>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <input
+              type={showKey ? 'text' : 'password'}
+              placeholder="sk-ant-..."
+              value={keyInput}
+              onChange={e => setKeyInput(e.target.value)}
+              style={{ width: '100%', padding: '10px 40px 10px 14px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontFamily: 'monospace', background: 'var(--bg-card)' }}
+            />
+            <button type="button" onClick={() => setShowKey(!showKey)}
+              style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--text-muted)', padding: '4px' }}>
+              {showKey ? '🙈' : '👁️'}
+            </button>
+          </div>
+          <button
+            onClick={() => { onSetApiKey(keyInput.trim()); }}
+            disabled={keyInput.trim() === apiKey}
+            style={{ padding: '10px 20px', background: keyInput.trim() !== apiKey ? 'var(--primary)' : 'var(--bg)', color: keyInput.trim() !== apiKey ? 'white' : 'var(--text-muted)', border: keyInput.trim() !== apiKey ? 'none' : '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: keyInput.trim() !== apiKey ? 'pointer' : 'default', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+            저장
+          </button>
+          {apiKey && (
+            <button
+              onClick={() => { onSetApiKey(''); setKeyInput(''); }}
+              style={{ padding: '10px 16px', background: 'var(--danger-bg)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+              삭제
+            </button>
+          )}
+        </div>
+        {apiKey && (
+          <div style={{ marginTop: 10, fontSize: 12, color: 'var(--success)', fontWeight: 500 }}>
+            API 키가 설정되었습니다
+          </div>
+        )}
       </div>
 
       {/* Account Section */}

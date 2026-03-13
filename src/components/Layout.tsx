@@ -63,6 +63,17 @@ function InvestIcon() {
   );
 }
 
+function AIIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2a4 4 0 0 1 4 4c0 1.1-.9 2-2 2h-4a2 2 0 0 1-2-2 4 4 0 0 1 4-4z" />
+      <path d="M8 8v4m8-4v4" />
+      <rect x="6" y="12" width="12" height="8" rx="2" />
+      <path d="M10 16h4" />
+    </svg>
+  );
+}
+
 function SettingsIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -89,6 +100,7 @@ const NAV_ITEMS = [
   { to: '/trends', label: '추이 분석', icon: <ChartIcon /> },
   { to: '/income-statement', label: '손익계산서', icon: <FileIcon /> },
   { to: '/investments', label: '투자현황', icon: <InvestIcon /> },
+  { to: '/ai-analysis', label: 'AI 분석', icon: <AIIcon /> },
   { to: '/settings', label: '설정', icon: <SettingsIcon /> },
 ];
 

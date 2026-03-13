@@ -9,6 +9,7 @@ const STORAGE_KEYS = {
   liabilities: 'fs_liabilities',
   investments: 'fs_investments',
   accounts: 'fs_accounts',
+  apiKey: 'fs_api_key',
 };
 
 const DEFAULT_CATEGORIES: Category[] = [
@@ -64,6 +65,9 @@ export function useStore() {
   const [accounts, setAccounts] = useState<Account[]>(() =>
     loadFromStorage(STORAGE_KEYS.accounts, [])
   );
+  const [apiKey, setApiKeyState] = useState<string>(() =>
+    loadFromStorage(STORAGE_KEYS.apiKey, '')
+  );
 
   useEffect(() => saveToStorage(STORAGE_KEYS.transactions, transactions), [transactions]);
   useEffect(() => saveToStorage(STORAGE_KEYS.categories, categories), [categories]);
@@ -71,6 +75,7 @@ export function useStore() {
   useEffect(() => saveToStorage(STORAGE_KEYS.liabilities, liabilities), [liabilities]);
   useEffect(() => saveToStorage(STORAGE_KEYS.investments, investments), [investments]);
   useEffect(() => saveToStorage(STORAGE_KEYS.accounts, accounts), [accounts]);
+  useEffect(() => saveToStorage(STORAGE_KEYS.apiKey, apiKey), [apiKey]);
 
   const addTransaction = useCallback((tx: Omit<Transaction, 'id' | 'createdAt'>) => {
     setTransactions(prev => [
@@ -171,6 +176,10 @@ export function useStore() {
     setAccounts(prev => prev.filter(a => a.id !== id));
   }, []);
 
+  const setApiKey = useCallback((key: string) => {
+    setApiKeyState(key);
+  }, []);
+
   return {
     transactions,
     categories,
@@ -196,5 +205,7 @@ export function useStore() {
     addAccount,
     updateAccount,
     deleteAccount,
+    apiKey,
+    setApiKey,
   };
 }

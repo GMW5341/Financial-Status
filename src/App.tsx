@@ -7,6 +7,7 @@ import Trends from './pages/Trends';
 import IncomeStatement from './pages/IncomeStatement';
 import InvestmentPortfolio from './pages/InvestmentPortfolio';
 import Settings from './pages/Settings';
+import AIAnalysis from './pages/AIAnalysis';
 import { useStore } from './store/useStore';
 
 function App() {
@@ -90,6 +91,19 @@ function App() {
                 onAddCategory={store.addCategory}
                 onUpdateCategory={store.updateCategory}
                 onDeleteCategory={store.deleteCategory}
+                apiKey={store.apiKey}
+                onSetApiKey={store.setApiKey}
+              />
+            }
+          />
+          <Route
+            path="/ai-analysis"
+            element={
+              <AIAnalysis
+                transactions={store.transactions}
+                categories={store.categories}
+                investments={store.investments}
+                apiKey={store.apiKey}
               />
             }
           />
