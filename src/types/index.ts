@@ -57,6 +57,17 @@ export interface Account {
   createdAt: string;
 }
 
+export interface AIAnalysisHistory {
+  id: string;
+  date: string; // ISO string
+  score: number;
+  scoreLabel: string;
+  vulnerabilities: { title: string; description: string; severity: 'high' | 'medium' | 'low' }[];
+  improvements: { title: string; description: string; impact: 'high' | 'medium' | 'low' }[];
+  actions: { title: string; description: string }[];
+  summary: string;
+}
+
 export interface MonthlyData {
   month: string; // YYYY-MM
   totalIncome: number;

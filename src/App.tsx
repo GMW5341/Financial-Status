@@ -104,6 +104,9 @@ function App() {
                 categories={store.categories}
                 investments={store.investments}
                 apiKey={store.apiKey}
+                aiHistory={store.aiHistory}
+                onAddHistory={store.addAiHistory}
+                onDeleteHistory={store.deleteAiHistory}
               />
             }
           />

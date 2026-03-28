@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import type { Transaction, Category, Asset, Liability, Investment, Account } from '../types';
+import type { Transaction, Category, Asset, Liability, Investment, Account, AIAnalysisHistory } from '../types';
 
 const STORAGE_KEYS = {
   transactions: 'fs_transactions',
@@ -10,6 +10,7 @@ const STORAGE_KEYS = {
   investments: 'fs_investments',
   accounts: 'fs_accounts',
   apiKey: 'fs_api_key',
+  aiHistory: 'fs_ai_history',
 };
 
 const DEFAULT_CATEGORIES: Category[] = [
@@ -68,6 +69,9 @@ export function useStore() {
   const [apiKey, setApiKeyState] = useState<string>(() =>
     loadFromStorage(STORAGE_KEYS.apiKey, '')
   );
+  const [aiHistory, setAiHistory] = useState<AIAnalysisHistory[]>(() =>
+    loadFromStorage(STORAGE_KEYS.aiHistory, [])
+  );
 
   useEffect(() => saveToStorage(STORAGE_KEYS.transactions, transactions), [transactions]);
   useEffect(() => saveToStorage(STORAGE_KEYS.categories, categories), [categories]);
@@ -76,6 +80,7 @@ export function useStore() {
   useEffect(() => saveToStorage(STORAGE_KEYS.investments, investments), [investments]);
   useEffect(() => saveToStorage(STORAGE_KEYS.accounts, accounts), [accounts]);
   useEffect(() => saveToStorage(STORAGE_KEYS.apiKey, apiKey), [apiKey]);
+  useEffect(() => saveToStorage(STORAGE_KEYS.aiHistory, aiHistory), [aiHistory]);
 
   const addTransaction = useCallback((tx: Omit<Transaction, 'id' | 'createdAt'>) => {
     setTransactions(prev => [
@@ -180,6 +185,14 @@ export function useStore() {
     setApiKeyState(key);
   }, []);
 
+  const addAiHistory = useCallback((entry: Omit<AIAnalysisHistory, 'id'>) => {
+    setAiHistory(prev => [{ ...entry, id: uuidv4() }, ...prev]);
+  }, []);
+
+  const deleteAiHistory = useCallback((id: string) => {
+    setAiHistory(prev => prev.filter(h => h.id !== id));
+  }, []);
+
   return {
     transactions,
     categories,
@@ -207,5 +220,8 @@ export function useStore() {
     deleteAccount,
     apiKey,
     setApiKey,
+    aiHistory,
+    addAiHistory,
+    deleteAiHistory,
   };
 }

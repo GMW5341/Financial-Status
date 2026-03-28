@@ -10,6 +10,7 @@ import {
   formatKRW, formatCompact,
 } from '../utils/finance';
 import MonthSelector from '../components/MonthSelector';
+import CompoundCalculator from '../components/CompoundCalculator';
 
 interface Props {
   transactions: Transaction[];
@@ -152,6 +153,9 @@ export default function Dashboard({ transactions, categories, onDelete }: Props)
           </div>
         )}
       </div>
+
+      {/* Compound Interest Calculator - full width */}
+      <CompoundCalculator defaultInitial={Math.max(0, totalRetained)} defaultMonthly={Math.max(0, net)} />
 
       {/* Category + Transactions side by side */}
       <div className="grid-2">

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Transaction, Category, Investment } from '../types';
+import type { Transaction, Category, Investment, AIAnalysisHistory } from '../types';
 import { buildFinancialSummary, analyzeFinances } from '../utils/aiAnalysis';
 import type { AnalysisResult } from '../utils/aiAnalysis';
 
@@ -9,6 +9,9 @@ interface Props {
   categories: Category[];
   investments: Investment[];
   apiKey: string;
+  aiHistory: AIAnalysisHistory[];
+  onAddHistory: (entry: Omit<AIAnalysisHistory, 'id'>) => void;
+  onDeleteHistory: (id: string) => void;
 }
 
 const SEVERITY_STYLE: Record<string, { bg: string; color: string; label: string }> = {
@@ -23,11 +26,99 @@ const IMPACT_STYLE: Record<string, { bg: string; color: string; label: string }>
   low: { bg: 'var(--bg)', color: 'var(--text-muted)', label: '효과 작음' },
 };
 
-export default function AIAnalysis({ transactions, categories, investments, apiKey }: Props) {
+function AnalysisResultView({ result }: { result: AnalysisResult }) {
+  const scoreColor = (score: number) => {
+    if (score >= 70) return 'var(--success)';
+    if (score >= 40) return '#F59E0B';
+    return 'var(--danger)';
+  };
+
+  return (
+    <div>
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 16 }}>
+          <div style={{
+            width: 80, height: 80, borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            border: `4px solid ${scoreColor(result.score)}`, flexShrink: 0,
+          }}>
+            <div style={{ fontSize: 24, fontWeight: 800, color: scoreColor(result.score), lineHeight: 1 }}>{result.score}</div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>/ 100</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{result.scoreLabel}</div>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7 }}>{result.summary}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid-2">
+        <div className="card">
+          <div className="card-title" style={{ color: 'var(--danger)' }}>취약점</div>
+          {result.vulnerabilities.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>발견된 취약점이 없습니다</p>
+          ) : (
+            result.vulnerabilities.map((v, i) => {
+              const style = SEVERITY_STYLE[v.severity] || SEVERITY_STYLE.medium;
+              return (
+                <div key={i} style={{ padding: 14, background: 'var(--bg)', borderRadius: 8, marginBottom: 8, borderLeft: `3px solid ${style.color}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>{v.title}</span>
+                    <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600, background: style.bg, color: style.color }}>{style.label}</span>
+                  </div>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{v.description}</p>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <div className="card">
+          <div className="card-title" style={{ color: 'var(--primary)' }}>개선점</div>
+          {result.improvements.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>제안할 개선점이 없습니다</p>
+          ) : (
+            result.improvements.map((imp, i) => {
+              const style = IMPACT_STYLE[imp.impact] || IMPACT_STYLE.medium;
+              return (
+                <div key={i} style={{ padding: 14, background: 'var(--bg)', borderRadius: 8, marginBottom: 8, borderLeft: `3px solid ${style.color}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>{imp.title}</span>
+                    <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600, background: style.bg, color: style.color }}>{style.label}</span>
+                  </div>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{imp.description}</p>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {result.actions.length > 0 && (
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="card-title" style={{ color: 'var(--accent)' }}>실행 액션</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+            {result.actions.map((action, i) => (
+              <div key={i} style={{ padding: 14, background: 'var(--bg)', borderRadius: 8, borderLeft: '3px solid var(--accent)' }}>
+                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{action.title}</div>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{action.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function AIAnalysis({
+  transactions, categories, investments, apiKey,
+  aiHistory, onAddHistory, onDeleteHistory,
+}: Props) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [viewingHistoryId, setViewingHistoryId] = useState<string | null>(null);
 
   const hasData = transactions.length > 0;
 
@@ -35,15 +126,27 @@ export default function AIAnalysis({ transactions, categories, investments, apiK
     if (!apiKey) return;
     setLoading(true);
     setError(null);
+    setViewingHistoryId(null);
     try {
       const summary = buildFinancialSummary(transactions, categories, investments);
       const analysis = await analyzeFinances(apiKey, summary);
       setResult(analysis);
+      onAddHistory({
+        date: new Date().toISOString(),
+        ...analysis,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : '분석 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const viewingHistory = viewingHistoryId ? aiHistory.find(h => h.id === viewingHistoryId) : null;
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
 
   const scoreColor = (score: number) => {
@@ -115,84 +218,59 @@ export default function AIAnalysis({ transactions, categories, investments, apiK
             </div>
           )}
 
-          {/* Result */}
-          {result && !loading && (
+          {/* Current Result */}
+          {result && !loading && !viewingHistoryId && <AnalysisResultView result={result} />}
+
+          {/* Viewing History Item */}
+          {viewingHistory && !loading && (
             <div>
-              {/* Score + Summary */}
-              <div className="card" style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 16 }}>
-                  <div style={{
-                    width: 80, height: 80, borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    border: `4px solid ${scoreColor(result.score)}`, flexShrink: 0,
-                  }}>
-                    <div style={{ fontSize: 24, fontWeight: 800, color: scoreColor(result.score), lineHeight: 1 }}>{result.score}</div>
-                    <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>/ 100</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{result.scoreLabel}</div>
-                    <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7 }}>{result.summary}</p>
-                  </div>
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <button onClick={() => setViewingHistoryId(null)}
+                  style={{ padding: '6px 14px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  ← 돌아가기
+                </button>
+                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                  {formatDate(viewingHistory.date)} 분석 결과
+                </span>
               </div>
+              <AnalysisResultView result={viewingHistory} />
+            </div>
+          )}
 
-              <div className="grid-2">
-                {/* Vulnerabilities */}
-                <div className="card">
-                  <div className="card-title" style={{ color: 'var(--danger)' }}>취약점</div>
-                  {result.vulnerabilities.length === 0 ? (
-                    <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>발견된 취약점이 없습니다</p>
-                  ) : (
-                    result.vulnerabilities.map((v, i) => {
-                      const style = SEVERITY_STYLE[v.severity] || SEVERITY_STYLE.medium;
-                      return (
-                        <div key={i} style={{ padding: 14, background: 'var(--bg)', borderRadius: 8, marginBottom: 8, borderLeft: `3px solid ${style.color}` }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                            <span style={{ fontWeight: 600, fontSize: 14 }}>{v.title}</span>
-                            <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600, background: style.bg, color: style.color }}>{style.label}</span>
-                          </div>
-                          <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{v.description}</p>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-
-                {/* Improvements */}
-                <div className="card">
-                  <div className="card-title" style={{ color: 'var(--primary)' }}>개선점</div>
-                  {result.improvements.length === 0 ? (
-                    <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>제안할 개선점이 없습니다</p>
-                  ) : (
-                    result.improvements.map((imp, i) => {
-                      const style = IMPACT_STYLE[imp.impact] || IMPACT_STYLE.medium;
-                      return (
-                        <div key={i} style={{ padding: 14, background: 'var(--bg)', borderRadius: 8, marginBottom: 8, borderLeft: `3px solid ${style.color}` }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                            <span style={{ fontWeight: 600, fontSize: 14 }}>{imp.title}</span>
-                            <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600, background: style.bg, color: style.color }}>{style.label}</span>
-                          </div>
-                          <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{imp.description}</p>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-
-              {/* Action Items */}
-              {result.actions.length > 0 && (
-                <div className="card" style={{ marginTop: 16 }}>
-                  <div className="card-title" style={{ color: 'var(--accent)' }}>실행 액션</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
-                    {result.actions.map((action, i) => (
-                      <div key={i} style={{ padding: 14, background: 'var(--bg)', borderRadius: 8, borderLeft: '3px solid var(--accent)' }}>
-                        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{action.title}</div>
-                        <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{action.description}</p>
+          {/* History List */}
+          {aiHistory.length > 0 && (
+            <div className="card" style={{ marginTop: 20 }}>
+              <div className="card-title">분석 히스토리 ({aiHistory.length})</div>
+              <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+                {aiHistory.map(h => (
+                  <div key={h.id} className="account-item"
+                    style={{ cursor: 'pointer', background: viewingHistoryId === h.id ? 'var(--bg)' : undefined }}
+                    onClick={() => { setViewingHistoryId(h.id); setResult(null); }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      border: `3px solid ${scoreColor(h.score)}`, flexShrink: 0, fontSize: 14, fontWeight: 800, color: scoreColor(h.score),
+                    }}>
+                      {h.score}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {h.scoreLabel}
                       </div>
-                    ))}
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        {formatDate(h.date)} · 취약점 {h.vulnerabilities.length}건 · 개선점 {h.improvements.length}건
+                      </div>
+                    </div>
+                    <button
+                      onClick={e => { e.stopPropagation(); onDeleteHistory(h.id); if (viewingHistoryId === h.id) setViewingHistoryId(null); }}
+                      title="삭제"
+                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 14, padding: '4px 6px', opacity: 0.4, transition: 'all 0.15s' }}
+                      onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--danger)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.color = 'var(--text-muted)'; }}>
+                      ✕
+                    </button>
                   </div>
-                </div>
-              )}
+                ))}
+              </div>
             </div>
           )}
         </>
