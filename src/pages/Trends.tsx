@@ -57,7 +57,8 @@ export default function Trends({ transactions, categories }: Props) {
     ? getCategoryTrend(transactions, selectedCategory, months)
     : null;
 
-  const expensePieData = expenseCategories
+  const MAX_PIE_ITEMS = 7;
+  const allExpenseData = expenseCategories
     .map(cat => {
       const total = transactions
         .filter(t => t.type === 'expense' && t.categoryId === cat.id)
@@ -66,6 +67,16 @@ export default function Trends({ transactions, categories }: Props) {
     })
     .filter(d => d.value > 0)
     .sort((a, b) => b.value - a.value);
+
+  const totalExpenseSum = allExpenseData.reduce((s, d) => s + d.value, 0);
+
+  const topItems = allExpenseData.slice(0, MAX_PIE_ITEMS);
+  const otherItems = allExpenseData.slice(MAX_PIE_ITEMS);
+  const otherSum = otherItems.reduce((s, d) => s + d.value, 0);
+
+  const expensePieData = otherSum > 0
+    ? [...topItems, { name: `기타 (${otherItems.length}건)`, value: otherSum, icon: '📎' }]
+    : topItems;
 
   return (
     <div>
@@ -141,17 +152,45 @@ export default function Trends({ transactions, categories }: Props) {
         {expensePieData.length > 0 && (
           <div className="card">
             <div className="card-title">지출 비율</div>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie data={expensePieData} cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={3} dataKey="value"
-                  label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
-                  {expensePieData.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip content={<PieTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              {/* Donut - no labels */}
+              <div style={{ flexShrink: 0, width: 180, height: 180 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={expensePieData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={2} dataKey="value"
+                      label={false} isAnimationActive={true}>
+                      {expensePieData.map((_, i) => (
+                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<PieTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              {/* Legend list */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {expensePieData.map((d, i) => {
+                  const pct = totalExpenseSum > 0 ? (d.value / totalExpenseSum) * 100 : 0;
+                  return (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0' }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 3, background: COLORS[i % COLORS.length], flexShrink: 0 }} />
+                      <span style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+                        {d.icon} {d.name}
+                      </span>
+                      <div style={{ flex: 1, height: 6, background: 'var(--bg)', borderRadius: 3, minWidth: 30, overflow: 'hidden' }}>
+                        <div style={{
+                          width: `${pct}%`, height: '100%', borderRadius: 3,
+                          background: COLORS[i % COLORS.length], transition: 'width 0.3s ease',
+                        }} />
+                      </div>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap', minWidth: 32, textAlign: 'right' }}>
+                        {pct.toFixed(0)}%
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
 
