@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { format, subMonths, endOfMonth } from 'date-fns';
 import {
   LineChart, Line, AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell,
@@ -57,11 +58,30 @@ export default function Trends({ transactions, categories }: Props) {
     ? getCategoryTrend(transactions, selectedCategory, months)
     : null;
 
+  // Pie chart period filter
+  type PieMode = 'all' | 'month' | 'range';
+  const [pieMode, setPieMode] = useState<PieMode>('all');
+  const [pieMonth, setPieMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [pieFrom, setPieFrom] = useState(format(subMonths(new Date(), 2), 'yyyy-MM'));
+  const [pieTo, setPieTo] = useState(format(new Date(), 'yyyy-MM'));
+
+  const piePeriodLabel = pieMode === 'all' ? '전체' : pieMode === 'month' ? pieMonth : `${pieFrom} ~ ${pieTo}`;
+
+  const filteredExpenseTx = useMemo(() => {
+    const expTx = transactions.filter(t => t.type === 'expense');
+    if (pieMode === 'all') return expTx;
+    if (pieMode === 'month') return expTx.filter(t => t.date.startsWith(pieMonth));
+    // range: pieFrom-01 ~ pieTo-last day
+    const start = `${pieFrom}-01`;
+    const endDate = format(endOfMonth(new Date(pieTo + '-01')), 'yyyy-MM-dd');
+    return expTx.filter(t => t.date >= start && t.date <= endDate);
+  }, [transactions, pieMode, pieMonth, pieFrom, pieTo]);
+
   const MAX_PIE_ITEMS = 7;
   const allExpenseData = expenseCategories
     .map(cat => {
-      const total = transactions
-        .filter(t => t.type === 'expense' && t.categoryId === cat.id)
+      const total = filteredExpenseTx
+        .filter(t => t.categoryId === cat.id)
         .reduce((sum, t) => sum + t.amount, 0);
       return { name: cat.name, value: total, icon: cat.icon };
     })
@@ -77,6 +97,13 @@ export default function Trends({ transactions, categories }: Props) {
   const expensePieData = otherSum > 0
     ? [...topItems, { name: `기타 (${otherItems.length}건)`, value: otherSum, icon: '📎' }]
     : topItems;
+
+  // Available months for month picker (from transactions)
+  const availableMonths = useMemo(() => {
+    const set = new Set<string>();
+    transactions.forEach(t => set.add(t.date.slice(0, 7)));
+    return Array.from(set).sort().reverse();
+  }, [transactions]);
 
   return (
     <div>
@@ -149,9 +176,9 @@ export default function Trends({ transactions, categories }: Props) {
 
       {/* Bottom charts side by side */}
       <div className="grid-2">
-        {expensePieData.length > 0 && (
-          <div className="card">
-            <div className="card-title">지출 비율</div>
+        <div className="card">
+          <div className="card-title">지출 비율</div>
+          {expensePieData.length > 0 ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               {/* Donut - no labels */}
               <div style={{ flexShrink: 0, width: 180, height: 180 }}>
@@ -191,8 +218,54 @@ export default function Trends({ transactions, categories }: Props) {
                 })}
               </div>
             </div>
+          ) : (
+            <div className="empty-state" style={{ padding: 24 }}>
+              <p>해당 기간에 지출 내역이 없습니다</p>
+            </div>
+          )}
+
+          {/* Period selector */}
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+              {([['all', '전체'], ['month', '특정 월'], ['range', '기간 선택']] as const).map(([mode, label]) => (
+                <button key={mode} onClick={() => setPieMode(mode)}
+                  style={{
+                    padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                    border: pieMode === mode ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                    background: pieMode === mode ? 'rgba(27,42,74,0.04)' : 'var(--bg-card)',
+                    color: pieMode === mode ? 'var(--primary)' : 'var(--text-muted)',
+                  }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {pieMode === 'month' && (
+              <select value={pieMonth} onChange={e => setPieMonth(e.target.value)}
+                style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 13, fontFamily: 'inherit', width: '100%' }}>
+                {availableMonths.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            )}
+
+            {pieMode === 'range' && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input type="month" value={pieFrom} onChange={e => setPieFrom(e.target.value)}
+                  style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 13, fontFamily: 'inherit' }} />
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>~</span>
+                <input type="month" value={pieTo} onChange={e => setPieTo(e.target.value)}
+                  style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 13, fontFamily: 'inherit' }} />
+              </div>
+            )}
+
+            {totalExpenseSum > 0 && (
+              <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
+                {piePeriodLabel} · 총 지출 {formatKRW(totalExpenseSum)}
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         <div className="card">
           <div className="card-title">카테고리별 추이</div>
